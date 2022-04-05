@@ -20,6 +20,9 @@ sub register {
         $on_error = sub { shift->render( status => 403, text => "Forbidden!" ) };
     }
 
+    # Regex that defines urls to be skipped
+    my $skip = $conf->{skip};
+
     # Replace "form_for" helper
     my $original_form_for = delete $app->renderer->helpers->{form_for};
     croak qq{Cannot find helper "form_for". Please, load plugin "TagHelpers" before}
@@ -63,6 +66,10 @@ sub register {
 
             my $request_token = $c->req->param('csrftoken');
             #my $is_ajax = ( $c->req->headers->header('X-Requested-With') || '' ) eq 'XMLHttpRequest';
+
+            if ( $skip && $c->url_for =~ $skip ) {
+                return 1;
+            }
 
             if ( $c->req->method !~ m/^(?:GET|HEAD|OPTIONS)$/ && !$self->_is_valid_csrftoken($c) ) {
                 my $path = $c->tx->req->url->to_abs->to_string;
@@ -135,6 +142,9 @@ Mojolicious::Plugin::CSRFProtect - Fully protects you from CSRF attacks
         # ...
     });
 
+    # Skip some urls
+    $self->plugin('CSRFProtect', skip => /\/api/);
+
 =head1 DESCRIPTION
 
 L<Mojolicious::Plugin::CSRFProtect> is a L<Mojolicious> plugin which fully protects you from CSRF attacks.
@@ -165,6 +175,12 @@ You can pass custom error handling callback. For example
         my $c = shift;
         $c->render(template => 'error_403', status => 403 );
     });
+
+=head2 C<skip>
+
+You can pass a regex to skip certain urls
+
+    $self->plugin('CSRFProtect', skip => /\/api/);
 
 =head1 HELPERS
 
